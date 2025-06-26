@@ -1,154 +1,75 @@
 import React, { useState, useEffect } from 'react';
-import RoleSelectionPage from './RoleSelectionPage';
-import AuthPage from './AuthPage';
-import AdminLoginPage from './AdminLoginPage';
-import AdminDashboard from './AdminDashboard';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { checkAuth, logout } from './auth';
+import Auth from './components/Auth';
+import Admin from './components/Admin';
+import Tutor from './components/Tutor';
+import Student from './components/Student';
 
-const AcademyManagementApp = () => {
-  const [currentView, setCurrentView] = useState('role-selection');
-  const [selectedRole, setSelectedRole] = useState('');
-  const [currentUser, setCurrentUser] = useState(null);
-  const [pendingRequests, setPendingRequests] = useState([]);
-  const [approvedStudents, setApprovedStudents] = useState([]);
-  const [approvedTutors, setApprovedTutors] = useState([]);
-
-  // Mock API calls - replace with actual API endpoints
-  const API_BASE = 'http://localhost:8086/api';
-
-  const fetchPendingRequests = async () => {
-    try {
-      const [studentsRes, tutorsRes] = await Promise.all([
-        fetch(`${API_BASE}/students/pending`),
-        fetch(`${API_BASE}/tutors/pending`)
-      ]);
-      const pendingStudents = await studentsRes.json();
-      const pendingTutors = await tutorsRes.json();
-      setPendingRequests([...pendingStudents, ...pendingTutors]);
-    } catch (error) {
-      console.error('Error fetching pending requests:', error);
-    }
-  };
-
-  const fetchApprovedUsers = async () => {
-    try {
-      const [studentsRes, tutorsRes] = await Promise.all([
-        fetch(`${API_BASE}/students`),
-        fetch(`${API_BASE}/tutors`)
-      ]);
-      const students = await studentsRes.json();
-      const tutors = await tutorsRes.json();
-      setApprovedStudents(students);
-      setApprovedTutors(tutors);
-    } catch (error) {
-      console.error('Error fetching approved users:', error);
-    }
-  };
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (currentUser?.role === 'ADMIN') {
-      fetchPendingRequests();
-      fetchApprovedUsers();
-    }
-  }, [currentUser]);
+    const verifyAuth = async () => {
+      const userData = await checkAuth();
+      setUser(userData);
+      setLoading(false);
+    };
+    verifyAuth();
+  }, []);
 
-  const handleRoleSelection = (role) => {
-    setSelectedRole(role);
-    if (role === 'ADMIN') {
-      setCurrentView('admin-login');
-    } else {
-      setCurrentView('auth');
-    }
+  const handleLogout = () => {
+    logout();
+    setUser(null);
   };
 
-  const handleSignup = async (formData) => {
-    try {
-      const endpoint = selectedRole === 'STUDENT' ? '/students' : '/tutors';
-      const response = await fetch(`${API_BASE}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      
-      if (response.ok) {
-        alert('Registration successful! Please wait for admin approval.');
-        setCurrentView('role-selection');
-      } else {
-        alert('Registration failed. Please try again.');
-      }
-    } catch (error) {
-      console.error('Registration error:', error);
-      alert('Registration failed. Please try again.');
-    }
-  };
-
-  const handleApproval = async (userId, userType) => {
-    try {
-      const endpoint = userType === 'STUDENT' ? '/students' : '/tutors';
-      const response = await fetch(`${API_BASE}${endpoint}/approve/${userId}`, {
-        method: 'POST'
-      });
-      
-      if (response.ok) {
-        alert(`${userType} approved successfully!`);
-        fetchPendingRequests();
-        fetchApprovedUsers();
-      }
-    } catch (error) {
-      console.error('Approval error:', error);
-    }
-  };
-
-  const commonProps = {
-    setCurrentView,
-    selectedRole,
-    currentUser,
-    setCurrentUser,
-    pendingRequests,
-    approvedStudents,
-    approvedTutors,
-    handleRoleSelection,
-    handleSignup,
-    handleApproval
-  };
+  if (loading) return <div style={{ 
+    display: 'flex', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    height: '100vh',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: 'white',
+    fontSize: '24px'
+  }}>Loading...</div>;
 
   return (
-    <div>
-      {currentView === 'role-selection' && (
-        <RoleSelectionPage 
-          onRoleSelect={handleRoleSelection}
-        />
+    <Router>
+      {user && (
+        <nav style={{
+          background: '#2d3748',
+          padding: '15px',
+          color: 'white',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <span style={{ fontWeight: 'bold' }}>Achievers Academy - {user.role}</span>
+          <button 
+            onClick={handleLogout}
+            style={{
+              background: '#e53e3e',
+              color: 'white',
+              border: 'none',
+              padding: '8px 15px',
+              borderRadius: '5px',
+              cursor: 'pointer'
+            }}
+          >
+            Logout
+          </button>
+        </nav>
       )}
-      {currentView === 'auth' && (
-        <AuthPage 
-          selectedRole={selectedRole}
-          onSignup={handleSignup}
-          onBackToRoleSelection={() => setCurrentView('role-selection')}
-        />
-      )}
-      {currentView === 'admin-login' && (
-        <AdminLoginPage 
-          onLogin={(user) => {
-            setCurrentUser(user);
-            setCurrentView('admin-dashboard');
-          }}
-          onBackToRoleSelection={() => setCurrentView('role-selection')}
-        />
-      )}
-      {currentView === 'admin-dashboard' && (
-        <AdminDashboard 
-          currentUser={currentUser}
-          pendingRequests={pendingRequests}
-          approvedStudents={approvedStudents}
-          approvedTutors={approvedTutors}
-          onApproval={handleApproval}
-          onLogout={() => {
-            setCurrentUser(null);
-            setCurrentView('role-selection');
-          }}
-        />
-      )}
-    </div>
+      <Routes>
+        <Route path="/" element={user ? <Navigate to={`/${user.role.toLowerCase()}`} /> : <Navigate to="/auth" />} />
+        <Route path="/auth" element={!user ? <Auth setUser={setUser} /> : <Navigate to="/" />} />
+        <Route path="/admin" element={user?.role === 'ADMIN' ? <Admin user={user} /> : <Navigate to="/" />} />
+        <Route path="/tutor" element={user?.role === 'TUTOR' ? <Tutor user={user} /> : <Navigate to="/" />} />
+        <Route path="/student" element={user?.role === 'STUDENT' ? <Student user={user} /> : <Navigate to="/" />} />
+      </Routes>
+    </Router>
   );
 };
 
-export default AcademyManagementApp;
+export default App;

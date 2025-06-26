@@ -1,57 +1,84 @@
-// UserService.java
 package com.achieversacademy.service;
 
+import com.achieversacademy.entity.Role;
 import com.achieversacademy.entity.User;
+import com.achieversacademy.entity.UserStatus;
 import com.achieversacademy.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
+@Transactional
 public class UserService {
-    
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
     @Autowired
-    private UserRepository userRepository;
-    
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
+
     public User registerUser(User user) {
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new RuntimeException("Email already in use");
+        }
+        if (userRepository.existsByUsername(user.getUsername())) {
+            throw new RuntimeException("Username already taken");
+        }
+
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setStatus("PENDING"); // Set default status as PENDING
+        user.setStatus(UserStatus.PENDING);
+        user.setCreatedAt(LocalDateTime.now());
         return userRepository.save(user);
     }
-    
-    public List<User> getPendingApprovals(String role) {
-        return userRepository.findByRoleAndApproved(role, false);
+
+    public List<User> getPendingUsers(Role role) {
+        return userRepository.findPendingUsersByRole(role);
     }
-    
-    public User approveUser(Long userId) {
-        User user = userRepository.findById(userId).orElse(null);
-        if (user != null) {
-            user.setApproved(true);
-            user.setStatus("APPROVED"); // Update status when approved
-            return userRepository.save(user);
+
+    public void approveUser(Long userId, User admin) {
+        Optional<User> optionalUser = userRepository.findById(userId);
+        if (optionalUser.isPresent()) {
+            User user = optionalUser.get();
+            user.setStatus(UserStatus.APPROVED);
+            user.setApprovedByAdmin(admin);
+            user.setApprovedAt(LocalDateTime.now());
+            userRepository.save(user);
+        } else {
+            throw new RuntimeException("User not found");
         }
-        return null;
     }
-    
-    public User findByUsername(String username) {
+
+    public void rejectUser(Long userId, User admin) {
+        Optional<User> optionalUser = userRepository.findById(userId);
+        if (optionalUser.isPresent()) {
+            User user = optionalUser.get();
+            user.setStatus(UserStatus.REJECTED);
+            user.setApprovedByAdmin(admin);
+            user.setApprovedAt(LocalDateTime.now());
+            userRepository.save(user);
+        } else {
+            throw new RuntimeException("User not found");
+        }
+    }
+
+    public List<User> getAllUsersByRoleAndStatus(Role role, UserStatus status) {
+        return userRepository.findByRoleAndStatus(role, status);
+    }
+
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    public Optional<User> findByUsername(String username) {
         return userRepository.findByUsername(username);
-    }
-    
-    public User authenticateUser(String username, String password) {
-        User user = userRepository.findByUsername(username);
-        if (user != null) {
-            // Check if the raw password matches the encoded password
-            if (passwordEncoder.matches(password, user.getPassword())) {
-                // Additional check: only allow approved users to login (except ADMIN)
-                if ("ADMIN".equals(user.getRole()) || user.isApproved()) {
-                    return user;
-                }
-            }
-        }
-        return null; // Authentication failed
     }
 }
