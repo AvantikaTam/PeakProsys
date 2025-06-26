@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.0</version>
+        <version>3.1.5</version> <!-- Updated to Spring Boot 3.x for jakarta support -->
         <relativePath/>
     </parent>
 
@@ -21,8 +21,10 @@
 
     <properties>
         <java.version>17</java.version>
+        <mysql.connector.version>8.0.33</mysql.connector.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
+        <maven.resources.plugin.version>3.3.1</maven.resources.plugin.version>
     </properties>
 
     <dependencies>
@@ -45,37 +47,58 @@
         </dependency>
 
         <!-- Database -->
-        <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-            <version>8.0.33</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
+      <dependency>
+    <groupId>com.mysql</groupId>
+    <artifactId>mysql-connector-j</artifactId>
+    <scope>runtime</scope> <!-- Add runtime scope -->
+</dependency>
+        <!-- <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
+        </dependency> -->
+
+        <!-- JWT Support -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.11.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.11.5</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.11.5</version>
+            <scope>runtime</scope>
         </dependency>
 
-        <!-- Jakarta Persistence API -->
+        <!-- File Upload Support -->
         <dependency>
-            <groupId>jakarta.persistence</groupId>
-            <artifactId>jakarta.persistence-api</artifactId>
-            <version>3.1.0</version>
+            <groupId>commons-fileupload</groupId>
+            <artifactId>commons-fileupload</artifactId>
+            <version>1.5</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.11.0</version>
         </dependency>
 
-        <!-- Jakarta Validation API -->
+        <!-- React Frontend Compatibility -->
         <dependency>
-            <groupId>jakarta.validation</groupId>
-            <artifactId>jakarta.validation-api</artifactId>
-            <version>3.0.2</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
-
-        <!-- JSON Processing -->
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.15.2</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
         </dependency>
 
         <!-- Testing -->
@@ -89,12 +112,6 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.13.2</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
@@ -102,9 +119,11 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>com.achieversacademy.AchieversAcademyApplication</mainClass>
-                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>${maven.resources.plugin.version}</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -113,6 +132,9 @@
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
         </plugins>
